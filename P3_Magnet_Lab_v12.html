@@ -1,0 +1,1258 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<title>P3 Magnet Lab v3</title>
+<style>
+:root{
+  --bg:#f4f6f9;--card:#ffffff;--ink:#162131;--muted:#647286;--line:#253142;
+  --north:#e25151;--south:#4e73d9;--wood:#d8b07a;--wood2:#c58e54;
+  --soft:#edf2f8;--good:#e9f8ee;--warn:#fff4d9;--bad:#fdeaea;
+}
+*{box-sizing:border-box}
+html,body{margin:0;height:100%;font-family:Arial,Helvetica,sans-serif;background:var(--bg);color:var(--ink)}
+body{overflow:hidden}
+button{font:inherit}
+.app{height:100%;display:grid;grid-template-rows:auto auto 1fr}
+header{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:12px 16px;background:#fff;border-bottom:2px solid var(--line)}
+h1{margin:0;font-size:clamp(24px,4vw,38px)}
+.sub{font-size:clamp(12px,1.8vw,16px);color:var(--muted);margin-top:3px}
+.btn,.tab,.resetAll{border:2px solid var(--line);background:#fff;border-radius:11px;padding:9px 12px;font-weight:800;cursor:pointer}
+.btn:active,.tab:active,.resetAll:active{transform:translateY(1px)}
+.tabs{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;padding:8px;background:#fff;border-bottom:1px solid #ccd4de}
+.tab.active{background:var(--soft);border-color:#111}
+main{position:relative;overflow:hidden}
+.panel{display:none;height:100%;overflow:auto;padding:14px}
+.panel.active{display:block}
+.card{background:#fff;border:2px solid var(--line);border-radius:18px;padding:14px;box-shadow:0 4px 0 rgba(0,0,0,.07)}
+.title{font-size:clamp(21px,3vw,30px);font-weight:900;margin-bottom:6px}
+.lead{font-size:clamp(15px,2vw,19px);color:var(--muted);line-height:1.4}
+.instruction{margin-top:10px;background:#fff8dc;border:2px solid #dfc360;border-radius:13px;padding:10px 12px;font-weight:800}
+.feedback{margin-top:10px;border:2px solid var(--line);border-radius:13px;background:#fff;padding:11px 13px;font-weight:900}
+.small{font-size:13px;color:var(--muted);font-weight:600}
+.row{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+
+/* shared tabletop */
+.tabletop{
+  position:relative;margin-top:12px;border:4px solid #8b603b;border-radius:20px;overflow:hidden;touch-action:none;
+  background:
+    radial-gradient(circle at 20% 15%,rgba(255,255,255,.2),transparent 25%),
+    repeating-linear-gradient(0deg,rgba(95,55,20,.05) 0 2px,transparent 2px 28px),
+    linear-gradient(135deg,var(--wood),var(--wood2));
+  box-shadow:inset 0 0 0 2px rgba(255,255,255,.25),0 5px 0 rgba(0,0,0,.07)
+}
+.moveMagnet{position:absolute;width:230px;height:76px;touch-action:none;user-select:none;z-index:30;transform-origin:center}
+.magnetBody{width:100%;height:100%;border:4px solid #1e2530;border-radius:16px;display:flex;overflow:hidden;box-shadow:0 7px 14px rgba(0,0,0,.18);background:#fff}
+.pole{flex:1;display:flex;align-items:center;justify-content:center;color:#fff;font-weight:900;font-size:34px}
+.north{background:linear-gradient(145deg,#f06a6a,#c93636)}
+.south{background:linear-gradient(145deg,#6f8cf0,#3659bb)}
+.centerHandle{
+  position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);
+  width:42px;height:42px;border:none;background:transparent;z-index:4;cursor:grab;
+}
+.poleHandle{position:absolute;top:0;width:39%;height:100%;z-index:5;cursor:crosshair}.poleHandle.left{left:0}.poleHandle.right{right:0}
+
+/* section 1 */
+#materialsTable{height:560px}
+.materialObj{
+  position:absolute;width:104px;height:80px;border:2px solid #505a66;border-radius:15px;background:rgba(255,255,255,.96);
+  display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;font-weight:800;text-align:center;
+  z-index:9;transition:left .20s ease,top .20s ease;pointer-events:none;box-shadow:0 3px 7px rgba(0,0,0,.13)
+}
+.materialObj .icon{height:38px;display:grid;place-items:center}
+.materialObj .label{font-size:12px}
+.materialObj.attracted{box-shadow:0 0 0 4px rgba(255,235,105,.9),0 4px 8px rgba(0,0,0,.15)}
+#materialsStatus{position:absolute;right:10px;top:10px;background:#fff;border:2px solid var(--line);border-radius:12px;padding:8px 10px;font-weight:900;z-index:40}
+.svgIcon{width:44px;height:34px}
+
+/* section 2 */
+.sideLab{
+  position:relative;margin-top:12px;height:650px;border:4px solid #8b603b;border-radius:20px;overflow:hidden;touch-action:none;
+  background:linear-gradient(#e8f5ff 0 62%,#d7aa70 62% 100%);
+  box-shadow:inset 0 0 0 2px rgba(255,255,255,.28),0 5px 0 rgba(0,0,0,.07)
+}
+.sideLab::after{
+  content:"";position:absolute;left:0;right:0;top:62%;height:5px;background:#8f6039;z-index:2
+}
+#strengthMagnet{
+  position:absolute;
+  width:min(520px,82%);
+  height:78px;
+  top:112px;
+  left:50%;
+  transform:translateX(-50%);
+  z-index:25
+}
+#strengthMagnet .magnetBody{
+  border-radius:14px;
+  overflow:hidden;
+  height:78px;
+}
+#strengthMagnet .pole{min-width:0}
+#strengthMagnet .north{justify-content:flex-start;padding-left:16px}
+#strengthMagnet .south{justify-content:flex-end;padding-right:16px}
+#strengthCount,#strengthGauge{
+  position:absolute;top:12px;background:#fff;border:2px solid var(--line);border-radius:12px;padding:8px 10px;font-weight:900;z-index:45
+}
+#strengthGauge{left:10px}#strengthCount{right:10px}
+.clipObj{
+  position:absolute;width:40px;height:62px;z-index:10;touch-action:none;cursor:grab;transform-origin:20px 5px;
+  filter:drop-shadow(0 2px 2px rgba(0,0,0,.18))
+}
+.clipObj.dragging{z-index:80}
+.clipObj.attached{z-index:18;cursor:grab}
+.clipSvg{width:100%;height:100%;overflow:visible}
+.tableSurfaceLabel{position:absolute;left:14px;top:64%;font-weight:800;color:#75502e;z-index:5}
+.targetDot{
+  position:absolute;top:194px;width:18px;height:18px;border-radius:50%;
+  transform:translateX(-50%);background:#fff;border:3px solid #253142;z-index:28;
+  box-shadow:0 2px 4px rgba(0,0,0,.18)
+}
+.targetLabel{display:none}
+.fieldHint{
+  position:absolute;left:50%;top:235px;transform:translateX(-50%);
+  font-weight:800;color:#53677d;background:rgba(255,255,255,.82);padding:6px 10px;border-radius:10px;z-index:3
+}
+/* section 3 */
+.interaction-lab{
+  margin-top:12px;position:relative;height:430px;border:2px solid var(--line);border-radius:18px;overflow:hidden;touch-action:none;
+  background:linear-gradient(#0000 39px,rgba(0,0,0,.035) 40px),linear-gradient(90deg,#0000 39px,rgba(0,0,0,.035) 40px);
+  background-size:40px 40px
+}
+.magInt{position:absolute;width:180px;height:68px;z-index:10;touch-action:none;user-select:none}
+.magInt .magnetBody{border-radius:14px}
+.magInt .pole{font-size:29px}
+#knownMagnet .pole{font-size:28px}
+.magLabel{position:absolute;top:-27px;left:50%;transform:translateX(-50%);background:#fff;border:1px solid #999;border-radius:7px;padding:2px 7px;font-size:13px;font-weight:900;white-space:nowrap}
+.interaction-controls{position:absolute;left:10px;right:10px;top:10px;display:flex;gap:8px;z-index:40}
+.interaction-feedback{position:absolute;left:50%;bottom:12px;transform:translateX(-50%);width:min(620px,92%);border:3px solid var(--line);border-radius:15px;background:#fff;padding:10px 12px;text-align:center;font-weight:900;z-index:40}
+.forceArrow{position:absolute;font-size:42px;font-weight:900;opacity:0;z-index:5}.forceArrow.show{opacity:1}
+
+/* Unknown object lab */
+.unknownLab{margin-top:14px;border:2px solid var(--line);border-radius:18px;background:#f8fafc;padding:12px}
+.unknownStage{
+  position:relative;height:400px;border:3px solid #8391a3;border-radius:16px;
+  background:linear-gradient(#eef7ff 0 66%,#d6ae79 66% 100%);overflow:hidden;touch-action:none
+}
+#knownMagnet{
+  position:absolute;width:180px;height:64px;left:9%;top:136px;touch-action:none;z-index:15
+}
+.testObj{
+  position:absolute;width:180px;height:64px;border:4px solid #253142;border-radius:14px;background:#fff;
+  display:flex;align-items:center;justify-content:center;font-size:24px;font-weight:900;z-index:12;
+  touch-action:none;cursor:grab;box-shadow:0 4px 9px rgba(0,0,0,.13)
+}
+.unknownButtons{display:flex;gap:8px;justify-content:center;margin:10px 0;flex-wrap:wrap}
+.unknownBtn.active{background:var(--soft)}
+.mcqBox{margin-top:14px;border:2px solid var(--line);border-radius:15px;background:#fff;padding:12px}
+.mcqQuestion{font-weight:900;font-size:18px;margin-bottom:10px}
+.mcqOptions{display:flex;gap:10px;flex-wrap:wrap}
+.mcqOption{
+  flex:1;min-width:100px;border:2px solid var(--line);border-radius:12px;background:#fff;
+  padding:11px;font-weight:900;cursor:pointer
+}
+.mcqOption.correct{background:var(--good);border-color:#6aab79}
+.mcqOption.wrong{background:var(--bad);border-color:#c96666}
+.answerMsg{margin-top:10px;padding:10px;border-radius:12px;font-weight:900}.good{background:var(--good);border:2px solid #6aab79}.warn{background:var(--warn);border:2px solid #d7ad38}.bad{background:var(--bad);border:2px solid #c96666}
+/* section 4 */
+.orientation-lab{margin-top:12px;height:500px;border:2px solid var(--line);border-radius:18px;background:radial-gradient(circle at 50% 50%,#fff,#eef4f9);position:relative;overflow:hidden;touch-action:none}
+.compassCircle{position:absolute;left:50%;top:52%;width:min(345px,72vw);height:min(345px,72vw);transform:translate(-50%,-50%);border:4px solid var(--line);border-radius:50%;background:rgba(255,255,255,.6)}
+.compassCircle::before,.compassCircle::after{content:"";position:absolute;background:#9aa6b5}.compassCircle::before{left:50%;top:7%;bottom:7%;width:2px}.compassCircle::after{top:50%;left:7%;right:7%;height:2px}
+.dir{position:absolute;font-weight:900;font-size:24px;z-index:3}.dirN{top:8px;left:50%;transform:translateX(-50%)}.dirS{bottom:8px;left:50%;transform:translateX(-50%)}.dirE{right:10px;top:50%;transform:translateY(-50%)}.dirW{left:10px;top:50%;transform:translateY(-50%)}
+#orientMagnet{position:absolute;width:170px;height:56px;left:50%;top:52%;transform:translate(-50%,-50%) rotate(35deg);transform-origin:center;z-index:12;touch-action:none}
+#orientMagnet .magnetBody{border-radius:12px}
+#orientMagnet .pole{font-size:26px}
+.orientationPoleHandle{position:absolute;top:0;width:50%;height:100%;z-index:6;cursor:grab}.orientationPoleHandle.left{left:0}.orientationPoleHandle.right{right:0}
+.orientationControls{position:absolute;top:12px;left:12px;right:12px;display:flex;justify-content:center;z-index:20}
+.orientationFeedback{position:absolute;left:50%;bottom:12px;transform:translateX(-50%);width:min(620px,92%);background:#fff;border:3px solid var(--line);border-radius:15px;padding:10px 12px;text-align:center;font-weight:900;z-index:20}
+
+@media(max-width:800px){
+ .tabs{grid-template-columns:repeat(2,1fr)}
+ #materialsTable{height:650px}
+ .materialObj{width:88px;height:72px}.materialObj .label{font-size:10px}.materialObj .icon{height:31px}.svgIcon{width:38px;height:29px}
+ #strengthMagnet{width:min(430px,84%)}
+ .sideLab{height:690px}
+ .classifyArea{grid-template-columns:1fr}
+ .unknownStage{height:430px}
+}
+</style>
+</head>
+<body>
+<div class="app">
+<header>
+  <div><h1>🧲 P3 Magnet Lab</h1><div class="sub">Explore the properties of magnets by manipulating and testing them.</div></div>
+  <button class="resetAll" id="resetAll">Reset All</button>
+</header>
+
+<div class="tabs">
+  <button class="tab active" data-panel="materials">1. Materials</button>
+  <button class="tab" data-panel="strength">2. Poles & Strength</button>
+  <button class="tab" data-panel="interactions">3. Attract & Repel</button>
+  <button class="tab" data-panel="orientation">4. North–South</button>
+</div>
+
+<main>
+<section id="materials" class="panel active"><div class="card">
+  <div class="title">1. Magnetic and Non-Magnetic Materials</div>
+  <div class="lead">Move and rotate the magnet around the table. Objects made of magnetic materials such as <b>iron and steel</b> will move towards it. Non-magnetic objects will not respond.</div>
+  <div class="instruction">Use one finger to move the magnet. Drag either end of the magnet to rotate it. See how many magnetic objects you can collect.</div>
+  <div class="tabletop" id="materialsTable">
+    <div id="materialsStatus">Magnetic objects collected: <span id="materialsCount">0</span></div>
+    <div class="moveMagnet" id="materialsMagnet">
+      <div class="magnetBody"><div class="pole north">N</div><div class="pole south">S</div></div>
+      <div class="centerHandle"></div><div class="poleHandle left"></div><div class="poleHandle right"></div>
+    </div>
+
+    <div class="materialObj" data-magnetic="1" data-name="Steel paper clip"><div class="icon">
+      <svg class="svgIcon" viewBox="0 0 60 42"><path d="M38 6c9 0 14 6 14 14v9c0 8-6 13-13 13H19C11 42 6 37 6 30V15C6 8 11 4 17 4s11 4 11 10v15c0 4-3 7-7 7s-7-3-7-7V16" fill="none" stroke="#505a66" stroke-width="4" stroke-linecap="round"/></svg>
+    </div><div class="label">Steel paper clip</div></div>
+
+    <div class="materialObj" data-magnetic="0" data-name="Wood"><div class="icon">
+      <svg class="svgIcon" viewBox="0 0 60 42"><rect x="8" y="8" width="44" height="26" rx="4" fill="#a96f3b"/><path d="M15 15c10-4 17 5 29 0M14 26c12-3 20 5 31 0" stroke="#80502d" stroke-width="2" fill="none"/></svg>
+    </div><div class="label">Wood</div></div>
+
+    <div class="materialObj" data-magnetic="0" data-name="Plastic ruler"><div class="icon">
+      <svg class="svgIcon" viewBox="0 0 60 42"><rect x="6" y="12" width="48" height="18" rx="3" fill="#f2c94c" stroke="#776522" stroke-width="2"/><g stroke="#776522"><path d="M14 12v7M20 12v5M26 12v7M32 12v5M38 12v7M44 12v5"/></g></svg>
+    </div><div class="label">Plastic ruler</div></div>
+
+    <div class="materialObj" data-magnetic="1" data-name="Iron nail"><div class="icon">
+      <svg class="svgIcon" viewBox="0 0 60 42"><path d="M11 12h13l26 18-4 6-27-17H11z" fill="#7c8792"/><rect x="8" y="9" width="18" height="8" rx="2" fill="#5e6975"/></svg>
+    </div><div class="label">Iron nail</div></div>
+
+    <div class="materialObj" data-magnetic="0" data-name="Glass"><div class="icon">
+      <svg class="svgIcon" viewBox="0 0 60 42"><circle cx="30" cy="21" r="15" fill="#d9f1ff" stroke="#72a7c2" stroke-width="2"/><circle cx="25" cy="16" r="4" fill="#fff" opacity=".75"/></svg>
+    </div><div class="label">Glass marble</div></div>
+
+    <div class="materialObj" data-magnetic="0" data-name="Copper"><div class="icon">
+      <svg class="svgIcon" viewBox="0 0 60 42"><circle cx="30" cy="21" r="16" fill="#c97942" stroke="#8e4c27" stroke-width="2"/><circle cx="30" cy="21" r="10" fill="none" stroke="#e6a173" stroke-width="2"/></svg>
+    </div><div class="label">Copper</div></div>
+
+    <div class="materialObj" data-magnetic="1" data-name="Nickel coin"><div class="icon">
+      <svg class="svgIcon" viewBox="0 0 60 42">
+        <circle cx="30" cy="21" r="16" fill="#aeb7c0" stroke="#626d78" stroke-width="2"/>
+        <circle cx="30" cy="21" r="11" fill="none" stroke="#d9dee3" stroke-width="2"/>
+        <text x="30" y="25" text-anchor="middle" font-size="12" font-family="Arial" font-weight="700" fill="#4e5965">Ni</text>
+      </svg>
+    </div><div class="label">Nickel coin</div></div>
+
+    <div class="materialObj" data-magnetic="0" data-name="Rubber"><div class="icon">
+      <svg class="svgIcon" viewBox="0 0 60 42"><rect x="10" y="10" width="40" height="22" rx="8" fill="#ee7f8c" stroke="#9c4d58" stroke-width="2"/></svg>
+    </div><div class="label">Rubber eraser</div></div>
+
+    <div class="materialObj" data-magnetic="0" data-name="Aluminium"><div class="icon">
+      <svg class="svgIcon" viewBox="0 0 60 42"><rect x="17" y="5" width="26" height="32" rx="5" fill="#cbd3db" stroke="#7f8b96" stroke-width="2"/><ellipse cx="30" cy="9" rx="11" ry="3" fill="#e9eef2"/></svg>
+    </div><div class="label">Aluminium</div></div>
+  </div>
+  <div class="feedback" id="materialsFeedback">Move the magnet near different objects and observe what responds.</div>
+</div></section>
+
+<section id="strength" class="panel"><div class="card">
+  <div class="title">2. Magnetic Poles and Strength</div>
+  <div class="lead">The magnetic force is strongest at the <b>poles</b> and becomes weaker towards the middle of a bar magnet.</div>
+  <div class="instruction">Drag the paper clips to the circles before releasing them. Hang the paper clips on the various parts of the magnet and determine at which part of the magnet is the strongest and weakest.</div>
+
+  <div class="sideLab" id="strengthTable">
+    <div id="strengthGauge">Testing point: —</div>
+    <div id="strengthCount">Paper clips hanging: <span id="clipCount">0</span></div>
+    <div class="tableSurfaceLabel">table surface</div>
+
+    <div id="strengthMagnet">
+      <div class="magnetBody"><div class="pole north">N</div><div class="pole south">S</div></div>
+    </div>
+
+    <div class="targetDot" data-slot="0"></div><div class="targetLabel" data-slot="0">N pole</div>
+    <div class="targetDot" data-slot="1"></div><div class="targetLabel" data-slot="1">Between N & middle</div>
+    <div class="targetDot" data-slot="2"></div><div class="targetLabel" data-slot="2">Middle</div>
+    <div class="targetDot" data-slot="3"></div><div class="targetLabel" data-slot="3">Between middle & S</div>
+    <div class="targetDot" data-slot="4"></div><div class="targetLabel" data-slot="4">S pole</div>
+
+    <div class="fieldHint">Try building a chain at each marked point.</div>
+    <div id="paperclips"></div>
+  </div>
+
+  <div class="feedback" id="strengthFeedback">
+    The poles can hold up to 6 paper clips in a chain. The points between a pole and the middle can hold up to 3. The middle cannot hold any.
+  </div>
+</div></section>
+
+<section id="interactions" class="panel"><div class="card">
+  <div class="title">3. Attraction, Repulsion and the Test for a Magnet</div>
+  <div class="lead"><b>Unlike poles attract.</b> <b>Like poles repel.</b> Repulsion is the reliable test that proves an unknown object is itself a magnet.</div>
+  <div class="instruction">Part A: Move the magnets together. Flip either magnet to test different pole combinations.</div>
+  <div class="interaction-lab" id="interactionLab">
+    <div class="interaction-controls"><button class="btn" id="flipA">Flip Magnet A</button><button class="btn" id="flipB">Flip Magnet B</button><button class="btn" id="resetInteraction">Reset</button></div>
+    <div class="magInt" id="magnetA"><div class="magLabel">Magnet A</div><div class="magnetBody"><div class="pole north" data-pole="N">N</div><div class="pole south" data-pole="S">S</div></div></div>
+    <div class="magInt" id="magnetB"><div class="magLabel">Magnet B</div><div class="magnetBody"><div class="pole south" data-pole="S">S</div><div class="pole north" data-pole="N">N</div></div></div>
+    <div id="forceA" class="forceArrow">←</div><div id="forceB" class="forceArrow">→</div>
+    <div class="interaction-feedback" id="interactionFeedback">Move the magnets closer.<div class="small">Like poles repel. Unlike poles attract.</div></div>
+  </div>
+
+  <div class="instruction">Part B: Investigate A, B and C. Each unknown object is a plain white bar. Select one, then move the object and the known magnet near each other. Use the interaction to work out which one is itself a magnet.</div>
+  <div class="unknownLab">
+    <div class="unknownButtons">
+      <button class="btn unknownBtn active" data-id="A">Object A</button>
+      <button class="btn unknownBtn" data-id="B">Object B</button>
+      <button class="btn unknownBtn" data-id="C">Object C</button>
+      <button class="btn" id="resetUnknown">Reset test</button>
+    </div>
+
+    <div class="unknownStage" id="unknownStage">
+      <div class="moveMagnet" id="knownMagnet">
+        <div class="magnetBody"><div class="pole north">N</div><div class="pole south">S</div></div>
+      </div>
+
+      <div class="testObj" id="objA" data-id="A" data-kind="magnetic">A</div>
+      <div class="testObj" id="objB" data-id="B" data-kind="nonmagnetic">B</div>
+      <div class="testObj" id="objC" data-id="C" data-kind="magnet">C</div>
+    </div>
+
+    <div class="feedback" id="unknownFeedback">Object A is shown. Bring it near the known magnet and observe.</div>
+
+    <div class="mcqBox">
+      <div class="mcqQuestion">Which of the following objects is a magnet?</div>
+      <div class="mcqOptions">
+        <button class="mcqOption" data-answer="A">A</button>
+        <button class="mcqOption" data-answer="B">B</button>
+        <button class="mcqOption" data-answer="C">C</button>
+      </div>
+      <div id="mcqFeedback" class="answerMsg warn">Test the objects first, then choose your answer.</div>
+    </div>
+  </div>
+</div></section>
+
+
+<section id="orientation" class="panel"><div class="card">
+  <div class="title">4. North–South Orientation</div>
+  <div class="lead">A freely suspended magnet comes to rest in a <b>North–South direction</b>. This property is used in a compass.</div>
+  <div class="instruction">Drag either pole to rotate the magnet to any direction. Then press <b>Release Magnet</b> and watch how it gradually settles.</div>
+  <div class="orientation-lab" id="orientationLab">
+    <div class="orientationControls"><button class="btn" id="releaseNeedle">Release Magnet</button></div>
+    <div class="compassCircle"><div class="dir dirN">N</div><div class="dir dirS">S</div><div class="dir dirE">E</div><div class="dir dirW">W</div></div>
+    <div id="orientMagnet"><div class="magnetBody"><div class="pole north">N</div><div class="pole south">S</div></div><div class="orientationPoleHandle left"></div><div class="orientationPoleHandle right"></div></div>
+    <div class="orientationFeedback" id="orientationFeedback">Drag either pole to turn the magnet.<div class="small">Then release it and observe the sway.</div></div>
+  </div>
+</div></section>
+</main>
+</div>
+
+<script>
+(()=>{
+const qs=s=>document.querySelector(s), qsa=s=>[...document.querySelectorAll(s)];
+const clamp=(v,a,b)=>Math.max(a,Math.min(b,v));
+const rad=d=>d*Math.PI/180, deg=r=>r*180/Math.PI;
+const pointFrom=(c,a,d)=>({x:c.x+Math.cos(rad(a))*d,y:c.y+Math.sin(rad(a))*d});
+const localPoint=(x,y,cx,cy,a)=>{const t=rad(-a),dx=x-cx,dy=y-cy;return{x:dx*Math.cos(t)-dy*Math.sin(t),y:dx*Math.sin(t)+dy*Math.cos(t)}};
+const worldPoint=(x,y,cx,cy,a)=>{const t=rad(a);return{x:cx+x*Math.cos(t)-y*Math.sin(t),y:cy+x*Math.sin(t)+y*Math.cos(t)}};
+
+let strengthInitialized=false;
+
+qsa('.tab').forEach(t=>t.addEventListener('click',()=>{
+ qsa('.tab').forEach(x=>x.classList.remove('active'));
+ qsa('.panel').forEach(x=>x.classList.remove('active'));
+
+ t.classList.add('active');
+ qs('#'+t.dataset.panel).classList.add('active');
+
+ if(t.dataset.panel==='strength' && !strengthInitialized){
+   requestAnimationFrame(()=>{
+     requestAnimationFrame(()=>{
+       positionStrengthMarkers();
+       resetStrength();
+       strengthInitialized=true;
+     });
+   });
+ }
+
+ if(t.dataset.panel==='interactions'){
+   requestAnimationFrame(()=>{setInteractionStart();resetUnknownStage()});
+ }
+}));
+
+function setupTransformMagnet(el,area,onChange){
+ let mode=null,pid=null,off={x:0,y:0},rotateOffset=0;
+ const state={x:0,y:0,angle:0};
+ const center=()=>({x:state.x+el.offsetWidth/2,y:state.y+el.offsetHeight/2});
+ function apply(){el.style.left=state.x+'px';el.style.top=state.y+'px';el.style.transform=`rotate(${state.angle}deg)`;if(onChange)onChange()}
+ function set(x,y,a=state.angle){
+   state.x=clamp(x,4,area.clientWidth-el.offsetWidth-4);
+   state.y=clamp(y,4,area.clientHeight-el.offsetHeight-4);
+   state.angle=a;apply();
+ }
+ el.querySelector('.centerHandle')?.addEventListener('pointerdown',e=>{
+   mode='move';pid=e.pointerId;const r=el.getBoundingClientRect();off.x=e.clientX-r.left;off.y=e.clientY-r.top;
+   try{e.currentTarget.setPointerCapture(pid)}catch(_){}e.preventDefault();
+ });
+ qsaFrom(el,'.poleHandle').forEach(h=>h.addEventListener('pointerdown',e=>{
+   mode='rotate';pid=e.pointerId;const ar=area.getBoundingClientRect(),c=center(),px=e.clientX-ar.left,py=e.clientY-ar.top;
+   rotateOffset=deg(Math.atan2(py-c.y,px-c.x))-state.angle;
+   try{h.setPointerCapture(pid)}catch(_){}e.preventDefault();
+ }));
+ el.addEventListener('pointermove',e=>{
+   if(e.pointerId!==pid||!mode)return;
+   const ar=area.getBoundingClientRect();
+   if(mode==='move')set(e.clientX-ar.left-off.x,e.clientY-ar.top-off.y,state.angle);
+   else{const c=center(),px=e.clientX-ar.left,py=e.clientY-ar.top;state.angle=deg(Math.atan2(py-c.y,px-c.x))-rotateOffset;apply()}
+   e.preventDefault();
+ });
+ const end=e=>{if(e.pointerId===pid){mode=null;pid=null}};
+ el.addEventListener('pointerup',end);el.addEventListener('pointercancel',end);
+ return{state,center,set,apply}
+}
+function qsaFrom(el,s){return [...el.querySelectorAll(s)]}
+
+/* 1 MATERIALS */
+const materialsTable=qs('#materialsTable'),materialsMagnet=qs('#materialsMagnet'),
+      materialsFeedback=qs('#materialsFeedback'),materialsCount=qs('#materialsCount');
+const materialObjs=qsa('#materialsTable .materialObj');
+let materialController,materialResetting=false;
+
+const materialLayout=[
+  [5,8],   // Steel paper clip — top left
+  [40,8],  // Wood
+  [5,40],  // Plastic ruler
+  [75,8],  // Iron nail — top right
+  [40,40], // Glass marble
+  [75,40], // Copper
+  [75,72], // Nickel coin — bottom right
+  [5,72],  // Rubber eraser
+  [40,72]  // Aluminium
+];
+
+materialObjs.forEach((el,i)=>{
+  el.dataset.attached='0';
+  el.dataset.homeX=materialLayout[i][0];
+  el.dataset.homeY=materialLayout[i][1];
+});
+
+function matPoleGeometry(){
+  const c=materialController.center();
+  const a=materialController.state.angle;
+  const hw=materialsMagnet.offsetWidth/2, hh=materialsMagnet.offsetHeight/2;
+  const leftPoleCenter=worldPoint(-hw*.78,0,c.x,c.y,a);
+  const rightPoleCenter=worldPoint(hw*.78,0,c.x,c.y,a);
+  return {c,a,hw,hh,leftPoleCenter,rightPoleCenter};
+}
+function materialCenter(el){return{x:el.offsetLeft+el.offsetWidth/2,y:el.offsetTop+el.offsetHeight/2}}
+
+function nearestPoleSurface(pt){
+  const g=matPoleGeometry();
+  const lp=localPoint(pt.x,pt.y,g.c.x,g.c.y,g.a);
+
+  // Left half is N pole region, right half is S pole region.
+  const isN = lp.x < 0;
+  const xMin = isN ? -g.hw : g.hw*.52;
+  const xMax = isN ? -g.hw*.52 : g.hw;
+
+  const cx=clamp(lp.x,xMin,xMax);
+  const cy=clamp(lp.y,-g.hh,g.hh);
+  const surface=worldPoint(cx,cy,g.c.x,g.c.y,g.a);
+
+  return {
+    surface,
+    pole:isN?'N':'S',
+    distance:Math.hypot(pt.x-surface.x,pt.y-surface.y),
+    localX:cx,
+    localY:cy
+  };
+}
+
+function snapMaterialToPole(el, poleInfo){
+  const g=matPoleGeometry();
+  const halfW=el.offsetWidth/2, halfH=el.offsetHeight/2;
+
+  let lx=poleInfo.localX, ly=poleInfo.localY;
+
+  // Snap to whichever side of the pole surface the object approached.
+  const distLeft=Math.abs(lx + g.hw);
+  const distRight=Math.abs(lx - g.hw);
+  const distTop=Math.abs(ly + g.hh);
+  const distBottom=Math.abs(ly - g.hh);
+  const m=Math.min(distLeft,distRight,distTop,distBottom);
+
+  if(m===distLeft){
+    lx=-g.hw-halfW-3;
+    ly=clamp(ly,-g.hh+8,g.hh-8);
+  }else if(m===distRight){
+    lx=g.hw+halfW+3;
+    ly=clamp(ly,-g.hh+8,g.hh-8);
+  }else if(m===distTop){
+    ly=-g.hh-halfH-3;
+    lx=clamp(lx, poleInfo.pole==='N'?-g.hw:g.hw*.52, poleInfo.pole==='N'?-g.hw*.52:g.hw);
+  }else{
+    ly=g.hh+halfH+3;
+    lx=clamp(lx, poleInfo.pole==='N'?-g.hw:g.hw*.52, poleInfo.pole==='N'?-g.hw*.52:g.hw);
+  }
+
+  const pos=worldPoint(lx,ly,g.c.x,g.c.y,g.a);
+  el.dataset.attachLX=lx;
+  el.dataset.attachLY=ly;
+  el.dataset.attachPole=poleInfo.pole;
+  el.style.left=(pos.x-halfW)+'px';
+  el.style.top=(pos.y-halfH)+'px';
+  el.style.transform='rotate(0deg)';
+  el.classList.add('attracted');
+}
+
+function updateAttachedMaterials(){
+  if(!materialController)return;
+  const g=matPoleGeometry();
+  materialObjs.forEach(el=>{
+    if(el.dataset.attached!=='1')return;
+    const lx=Number(el.dataset.attachLX),ly=Number(el.dataset.attachLY);
+    const pos=worldPoint(lx,ly,g.c.x,g.c.y,g.a);
+    el.style.left=(pos.x-el.offsetWidth/2)+'px';
+    el.style.top=(pos.y-el.offsetHeight/2)+'px';
+    el.style.transform='rotate(0deg)';
+  });
+}
+
+function updateMaterials(){
+  if(!materialController||materialResetting)return;
+
+  updateAttachedMaterials();
+
+  materialObjs.forEach(el=>{
+    if(el.dataset.magnetic!=='1'||el.dataset.attached==='1')return;
+
+    const oc=materialCenter(el);
+    const pole=nearestPoleSurface(oc);
+
+    if(pole.distance<135){
+      const vx=pole.surface.x-oc.x,vy=pole.surface.y-oc.y;
+      const d=Math.max(1,Math.hypot(vx,vy));
+
+      // Stronger "snap" so attraction feels immediate.
+      const step=Math.min(d,Math.max(24,(135-pole.distance)*0.55));
+      el.style.left=(el.offsetLeft+vx/d*step)+'px';
+      el.style.top=(el.offsetTop+vy/d*step)+'px';
+
+      const np=nearestPoleSurface(materialCenter(el));
+      if(np.distance<18){
+        el.dataset.attached='1';
+        snapMaterialToPole(el,np);
+      }
+    }
+  });
+
+  const attached=materialObjs.filter(o=>o.dataset.attached==='1');
+  materialsCount.textContent=attached.length;
+  materialsFeedback.innerHTML=attached.length
+    ? `🧲 <b>${attached.length}</b> magnetic object${attached.length===1?' is':'s are'} stuck to the magnet. Both N and S poles attract magnetic materials.`
+    : 'Move either pole near the magnetic objects and observe what responds.';
+}
+
+function resetMaterials(){
+  materialResetting=true;
+  materialObjs.forEach(el=>{
+    el.dataset.attached='0';el.classList.remove('attracted');
+    el.style.left=el.dataset.homeX+'%';el.style.top=el.dataset.homeY+'%';
+    el.style.transform='rotate(0deg)';
+    delete el.dataset.attachLX;delete el.dataset.attachLY;
+  });
+  materialController.set(
+    materialsTable.clientWidth/2-materialsMagnet.offsetWidth/2,
+    materialsTable.clientHeight/2-materialsMagnet.offsetHeight/2,0
+  );
+  materialsCount.textContent='0';
+  materialsFeedback.textContent='Move the magnet near different objects and observe what responds.';
+  materialResetting=false;
+}
+
+materialController=setupTransformMagnet(materialsMagnet,materialsTable,updateMaterials);
+
+
+/* 2 STRENGTH */
+const strengthTable=qs('#strengthTable'),strengthMagnet=qs('#strengthMagnet'),
+      paperclipsHost=qs('#paperclips'),clipCount=qs('#clipCount'),
+      strengthGauge=qs('#strengthGauge'),strengthFeedback=qs('#strengthFeedback');
+
+const slotCaps=[6,3,0,3,6];
+const slotNames=['N pole','Between N pole and middle','Middle','Between middle and S pole','S pole'];
+const slotClips=[[],[],[],[],[]];
+const clips=[];
+let draggingClip=null,clipOffset={x:0,y:0};
+
+function clipSVG(){
+ return `<svg class="clipSvg" viewBox="0 0 42 64">
+ <path d="M29 6c7 0 11 5 11 12v28c0 9-7 16-16 16S8 55 8 46V19C8 11 13 6 20 6s12 5 12 12v25c0 5-4 9-9 9s-9-4-9-9V20"
+ fill="none" stroke="#4d5965" stroke-width="4.2" stroke-linecap="round"/>
+ <path d="M29 6c7 0 11 5 11 12" fill="none" stroke="#b9c1c9" stroke-width="1.6" stroke-linecap="round"/></svg>`;
+}
+
+for(let i=0;i<18;i++){
+  const el=document.createElement('div');
+  el.className='clipObj';
+  el.innerHTML=clipSVG();
+  el.dataset.slot='-1';
+  paperclipsHost.appendChild(el);
+  clips.push(el);
+
+  el.addEventListener('pointerdown',e=>{
+    // Remove from its old chain before dragging.
+    const oldSlot=Number(el.dataset.slot);
+    if(oldSlot>=0){
+      const idx=slotClips[oldSlot].indexOf(el);
+      if(idx>=0)slotClips[oldSlot].splice(idx,1);
+      el.dataset.slot='-1';
+      layoutChains();
+    }
+    draggingClip=el;
+    el.classList.add('dragging');
+    const r=el.getBoundingClientRect();
+    clipOffset.x=e.clientX-r.left;clipOffset.y=e.clientY-r.top;
+    try{el.setPointerCapture(e.pointerId)}catch(_){}
+    e.preventDefault();
+  });
+
+  el.addEventListener('pointermove',e=>{
+    if(draggingClip!==el)return;
+    const tr=strengthTable.getBoundingClientRect();
+    el.style.left=clamp(e.clientX-tr.left-clipOffset.x,3,strengthTable.clientWidth-el.offsetWidth-3)+'px';
+    el.style.top=clamp(e.clientY-tr.top-clipOffset.y,44,strengthTable.clientHeight-el.offsetHeight-3)+'px';
+    el.style.transform='rotate(0deg)';
+    e.preventDefault();
+  });
+
+  el.addEventListener('pointerup',e=>{
+    if(draggingClip!==el)return;
+    el.classList.remove('dragging');
+    draggingClip=null;
+    handleClipRelease(el);
+  });
+
+  el.addEventListener('pointercancel',()=>{
+    if(draggingClip===el){el.classList.remove('dragging');draggingClip=null;dropClipToTable(el)}
+  });
+}
+
+function strengthGeometry(){
+  const tableRect=strengthTable.getBoundingClientRect();
+  const magnetRect=strengthMagnet.getBoundingClientRect();
+
+  const visualLeft=magnetRect.left-tableRect.left;
+  const visualTop=magnetRect.top-tableRect.top;
+  const mw=magnetRect.width;
+  const mh=magnetRect.height;
+
+  // Exact designated points along the visible magnet:
+  // N end, quarter, exact centre, three-quarter, S end.
+  const fractions=[0,0.25,0.50,0.75,1];
+
+  return fractions.map((f,i)=>({
+    x:visualLeft+mw*f,
+    y:visualTop+mh,
+    cap:slotCaps[i],
+    name:slotNames[i]
+  }));
+}
+
+function positionStrengthMarkers(){
+  const slots=strengthGeometry();
+
+  qsa('.targetDot').forEach((el,i)=>{
+    let x=slots[i].x;
+
+    // Keep the first four circles exactly where they are.
+    // Shift only the S-pole circle left so its right edge meets
+    // the visible right end of the magnet.
+    if(i===4){
+      x=slots[i].x-el.offsetWidth/2;
+    }
+
+    el.style.left=x+'px';
+    el.style.top=(slots[i].y-el.offsetHeight/2)+'px';
+  });
+}
+
+function handleClipRelease(el){
+  const c={x:el.offsetLeft+el.offsetWidth/2,y:el.offsetTop+el.offsetHeight/2};
+  const slots=strengthGeometry();
+  let nearest=0,best=Infinity;
+  slots.forEach((s,i)=>{
+    const d=Math.hypot(c.x-s.x,c.y-s.y);
+    if(d<best){best=d;nearest=i}
+  });
+
+  // Attraction zone: student can release slightly away from magnet.
+  if(best<115){
+    const cap=slotCaps[nearest];
+    if(cap===0){
+      strengthGauge.textContent='Testing point: Middle';
+      strengthFeedback.innerHTML='The <b>middle</b> cannot hold the paper clip. It falls straight down because gravity acts on it.';
+      dropClipToTable(el, slots[nearest].x);
+      return;
+    }
+
+    if(slotClips[nearest].length < cap){
+      el.dataset.slot=nearest;
+      slotClips[nearest].push(el);
+      el.classList.add('attached');
+      strengthGauge.textContent='Testing point: '+slotNames[nearest];
+      strengthFeedback.innerHTML=`<b>${slotNames[nearest]}</b> can hold up to <b>${cap}</b> paper clips in a chain.`;
+      layoutChains();
+      return;
+    }
+
+    strengthGauge.textContent='Testing point: '+slotNames[nearest];
+    strengthFeedback.innerHTML=`This point has reached its maximum of <b>${cap}</b> paper clips. The extra clip falls to the table.`;
+    dropClipToTable(el, slots[nearest].x);
+    return;
+  }
+
+  dropClipToTable(el);
+}
+
+function layoutChains(){
+  const slots=strengthGeometry();
+  slotClips.forEach((arr,slot)=>{
+    arr.forEach((el,i)=>{
+      el.dataset.slot=slot;
+      el.classList.add('attached');
+      el.style.left=(slots[slot].x-el.offsetWidth/2)+'px';
+      el.style.top=(slots[slot].y + i*48)+'px';
+      el.style.transform=`rotate(${i%2===0?-7:7}deg)`;
+    });
+  });
+  clipCount.textContent=slotClips.reduce((n,a)=>n+a.length,0);
+}
+
+function dropClipToTable(el,preferredX=null){
+  const surfaceY=strengthTable.clientHeight*.62+8;
+  const x=preferredX==null?el.offsetLeft+el.offsetWidth/2:preferredX;
+  const landingX=clamp(x-el.offsetWidth/2,8,strengthTable.clientWidth-el.offsetWidth-8);
+
+  // Find a free resting position so clips do not overlap.
+  let y=surfaceY;
+  let tries=0;
+  while(tries<12){
+    const overlaps=clips.some(other=>{
+      if(other===el || Number(other.dataset.slot)>=0)return false;
+      const ox=other.offsetLeft,oy=other.offsetTop;
+      return Math.abs(landingX-ox)<34 && Math.abs(y-oy)<46;
+    });
+    if(!overlaps)break;
+    y+=46;
+    tries++;
+  }
+  y=clamp(y,surfaceY,strengthTable.clientHeight-el.offsetHeight-5);
+
+  el.dataset.slot='-1';
+  el.classList.remove('attached');
+  el.style.left=landingX+'px';
+  el.style.top=y+'px';
+  el.style.transform='rotate(0deg)';
+  layoutChains();
+}
+
+function resetStrength(){
+  if(strengthTable.clientWidth===0 || strengthTable.clientHeight===0) return;
+
+  slotClips.forEach(a=>a.splice(0,a.length));
+  positionStrengthMarkers();
+
+  const w=strengthTable.clientWidth;
+  const h=strengthTable.clientHeight;
+  const surfaceY=h*.62+18;
+
+  const cols=9;
+  const leftMargin=34;
+  const rightMargin=34;
+  const usable=w-leftMargin-rightMargin;
+  const spacing=usable/(cols-1);
+
+  clips.forEach((el,i)=>{
+    const col=i%cols;
+    const row=Math.floor(i/cols);
+    const x=leftMargin+col*spacing-el.offsetWidth/2;
+    const y=surfaceY+row*78;
+
+    el.dataset.slot='-1';
+    el.classList.remove('attached','dragging');
+    el.style.left=clamp(x,3,w-el.offsetWidth-3)+'px';
+    el.style.top=clamp(y,surfaceY,h-el.offsetHeight-8)+'px';
+    el.style.transform='rotate(0deg)';
+  });
+
+  clipCount.textContent='0';
+  strengthGauge.textContent='Testing point: —';
+  strengthFeedback.innerHTML='The poles can hold up to <b>6</b> paper clips in a chain. The points between a pole and the middle can hold up to <b>3</b>. The middle holds <b>0</b>.';
+}
+
+/* 3A interactions */
+const interactionLab=qs('#interactionLab'),A=qs('#magnetA'),B=qs('#magnetB'),forceA=qs('#forceA'),forceB=qs('#forceB'),interactionFeedback=qs('#interactionFeedback');
+let dragInt=null,intOff={x:0,y:0},flippedA=false,flippedB=false;
+let magnetsBonded=false;
+let bondedLeft='A';
+
+function setIntPos(el,x,y){
+ x=clamp(x,6,interactionLab.clientWidth-el.offsetWidth-6);
+ y=clamp(y,62,interactionLab.clientHeight-el.offsetHeight-88);
+ el.style.left=x+'px';
+ el.style.top=y+'px'
+}
+
+function intOrder(el){return [...el.querySelectorAll('.pole')].map(p=>p.dataset.pole)}
+function flipInt(el){const body=el.querySelector('.magnetBody'),p=[...body.querySelectorAll('.pole')];body.insertBefore(p[1],p[0])}
+
+function breakMagnetBond(){
+ magnetsBonded=false;
+}
+
+function moveBondedPair(dragged,desiredX,desiredY){
+ const leftMag=bondedLeft==='A'?A:B;
+ const rightMag=bondedLeft==='A'?B:A;
+ const pairWidth=leftMag.offsetWidth+rightMag.offsetWidth;
+
+ let pairLeft;
+ if(dragged===leftMag){
+   pairLeft=desiredX;
+ }else{
+   pairLeft=desiredX-leftMag.offsetWidth;
+ }
+
+ pairLeft=clamp(pairLeft,6,interactionLab.clientWidth-pairWidth-6);
+ const y=clamp(desiredY,62,interactionLab.clientHeight-Math.max(A.offsetHeight,B.offsetHeight)-88);
+
+ leftMag.style.left=pairLeft+'px';
+ leftMag.style.top=y+'px';
+ rightMag.style.left=(pairLeft+leftMag.offsetWidth)+'px';
+ rightMag.style.top=y+'px';
+}
+
+function setInteractionStart(){
+ magnetsBonded=false;
+ const w=interactionLab.clientWidth,y=Math.max(125,interactionLab.clientHeight*.42);
+ setIntPos(A,w*.20-A.offsetWidth/2,y);
+ setIntPos(B,w*.74-B.offsetWidth/2,y);
+ updateInteraction(false)
+}
+
+[A,B].forEach(el=>{
+ el.addEventListener('pointerdown',e=>{
+   dragInt=el;
+   const r=el.getBoundingClientRect();
+   intOff.x=e.clientX-r.left;
+   intOff.y=e.clientY-r.top;
+   try{el.setPointerCapture(e.pointerId)}catch(_){}
+   e.preventDefault()
+ });
+
+ el.addEventListener('pointermove',e=>{
+   if(dragInt!==el)return;
+   const r=interactionLab.getBoundingClientRect();
+   const x=e.clientX-r.left-intOff.x;
+   const y=e.clientY-r.top-intOff.y;
+
+   if(magnetsBonded){
+     moveBondedPair(el,x,y);
+     updateInteraction(false);
+   }else{
+     setIntPos(el,x,y);
+     updateInteraction(true);
+   }
+   e.preventDefault()
+ });
+
+ el.addEventListener('pointerup',()=>{
+   dragInt=null;
+   updateInteraction(false)
+ });
+});
+
+function updateInteraction(apply=true){
+ const ar=A.getBoundingClientRect(),br=B.getBoundingClientRect(),lr=interactionLab.getBoundingClientRect();
+ const overlap=Math.max(0,Math.min(ar.bottom,br.bottom)-Math.max(ar.top,br.top));
+ let gap=ar.right<=br.left?br.left-ar.right:br.right<=ar.left?ar.left-br.right:-20;
+
+ if(overlap<Math.min(ar.height,br.height)*.45||gap>125){
+   if(!magnetsBonded){
+     interactionFeedback.innerHTML='Move the magnets closer.<div class="small">Like poles repel. Unlike poles attract.</div>';
+     forceA.classList.remove('show');
+     forceB.classList.remove('show');
+   }
+   return
+ }
+
+ const ao=intOrder(A),bo=intOrder(B),aLeft=ar.left<=br.left;
+ const p1=aLeft?ao[1]:bo[1],p2=aLeft?bo[0]:ao[0],same=p1===p2;
+ const ax=ar.left-lr.left+ar.width/2,bx=br.left-lr.left+br.width/2,y=((ar.top+ar.height/2)+(br.top+br.height/2))/2-lr.top;
+
+ forceA.style.left=ax+'px';forceA.style.top=y+'px';
+ forceB.style.left=bx+'px';forceB.style.top=y+'px';
+ forceA.textContent=same?(ax<bx?'←':'→'):(ax<bx?'→':'←');
+ forceB.textContent=same?(ax<bx?'→':'←'):(ax<bx?'←':'→');
+ forceA.classList.add('show');
+ forceB.classList.add('show');
+
+ if(same){
+   if(magnetsBonded)breakMagnetBond();
+
+   interactionFeedback.innerHTML=`${p1} and ${p2}: <b>REPEL!</b><div class="small">Like poles repel.</div>`;
+
+   if(apply&&gap<55){
+     const shift=17,ap={x:A.offsetLeft,y:A.offsetTop},bp={x:B.offsetLeft,y:B.offsetTop};
+     if(aLeft){
+       setIntPos(A,ap.x-shift,ap.y);
+       setIntPos(B,bp.x+shift,bp.y);
+     }else{
+       setIntPos(A,ap.x+shift,ap.y);
+       setIntPos(B,bp.x-shift,bp.y);
+     }
+   }
+   return;
+ }
+
+ interactionFeedback.innerHTML=`${p1} and ${p2}: <b>ATTRACT!</b><div class="small">Unlike poles attract. Once joined, pulling one magnet pulls the other along.</div>`;
+
+ if(apply&&gap<55&&!magnetsBonded){
+   bondedLeft=aLeft?'A':'B';
+   const leftMag=bondedLeft==='A'?A:B;
+   const rightMag=bondedLeft==='A'?B:A;
+
+   // Bring them into exact contact and align them vertically.
+   const pairY=dragInt===A?B.offsetTop:dragInt===B?A.offsetTop:(A.offsetTop+B.offsetTop)/2;
+   let pairLeft;
+
+   if(dragInt===leftMag){
+     pairLeft=rightMag.offsetLeft-leftMag.offsetWidth;
+   }else if(dragInt===rightMag){
+     pairLeft=leftMag.offsetLeft;
+   }else{
+     pairLeft=leftMag.offsetLeft;
+   }
+
+   pairLeft=clamp(pairLeft,6,interactionLab.clientWidth-leftMag.offsetWidth-rightMag.offsetWidth-6);
+   const finalY=clamp(pairY,62,interactionLab.clientHeight-Math.max(A.offsetHeight,B.offsetHeight)-88);
+
+   leftMag.style.left=pairLeft+'px';
+   leftMag.style.top=finalY+'px';
+   rightMag.style.left=(pairLeft+leftMag.offsetWidth)+'px';
+   rightMag.style.top=finalY+'px';
+
+   magnetsBonded=true;
+ }
+}
+
+qs('#flipA').onclick=()=>{
+ breakMagnetBond();
+ flipInt(A);
+ flippedA=!flippedA;
+ updateInteraction(true)
+};
+
+qs('#flipB').onclick=()=>{
+ breakMagnetBond();
+ flipInt(B);
+ flippedB=!flippedB;
+ updateInteraction(true)
+};
+
+qs('#resetInteraction').onclick=()=>{
+ magnetsBonded=false;
+ if(flippedA){flipInt(A);flippedA=false}
+ if(flippedB){flipInt(B);flippedB=false}
+ setInteractionStart()
+};
+
+/* 3B unknown manipulation */
+const unknownStage=qs('#unknownStage'),knownMagnet=qs('#knownMagnet'),unknownFeedback=qs('#unknownFeedback');
+let activeUnknown='A';
+let unknownDragSource=null;
+const unknownBars={A:qs('#objA'),B:qs('#objB'),C:qs('#objC')};
+
+function setupMoveOnly(el,area,onMove,sourceName){
+  let dragging=false,pid=null,offX=0,offY=0;
+
+  el.addEventListener('pointerdown',e=>{
+    dragging=true;
+    pid=e.pointerId;
+    unknownDragSource=sourceName;
+
+    const r=el.getBoundingClientRect();
+    offX=e.clientX-r.left;
+    offY=e.clientY-r.top;
+
+    try{el.setPointerCapture(pid)}catch(_){}
+    e.preventDefault();
+  });
+
+  el.addEventListener('pointermove',e=>{
+    if(!dragging||e.pointerId!==pid)return;
+
+    const ar=area.getBoundingClientRect();
+    const x=clamp(e.clientX-ar.left-offX,3,area.clientWidth-el.offsetWidth-3);
+    const y=clamp(e.clientY-ar.top-offY,45,area.clientHeight-el.offsetHeight-3);
+
+    // The user's finger has sole control over the object being dragged.
+    el.style.left=x+'px';
+    el.style.top=y+'px';
+
+    if(onMove)onMove();
+    e.preventDefault();
+  });
+
+  const end=e=>{
+    if(e.pointerId===pid){
+      if(onMove)onMove();
+      dragging=false;
+      pid=null;
+      unknownDragSource=null;
+    }
+  };
+
+  el.addEventListener('pointerup',end);
+  el.addEventListener('pointercancel',end);
+
+  return {
+    set:(x,y)=>{
+      el.style.left=x+'px';
+      el.style.top=y+'px';
+    }
+  };
+}
+
+const knownMove=setupMoveOnly(knownMagnet,unknownStage,updateUnknownPhysics,'magnet');
+const unknownMoves={};
+Object.entries(unknownBars).forEach(([id,el])=>{
+  unknownMoves[id]=setupMoveOnly(el,unknownStage,updateUnknownPhysics,id);
+});
+
+function showUnknown(id){
+  activeUnknown=id;
+  qsa('.unknownBtn').forEach(b=>b.classList.toggle('active',b.dataset.id===id));
+  Object.entries(unknownBars).forEach(([key,el])=>el.style.display=key===id?'flex':'none');
+  const el=unknownBars[id];
+  unknownMoves[id].set(unknownStage.clientWidth*.65-el.offsetWidth/2,132);
+  unknownFeedback.textContent=`Object ${id} is shown. Move it near either pole of the known magnet and observe.`;
+}
+
+function barRectLocal(el){
+  const r=el.getBoundingClientRect(),sr=unknownStage.getBoundingClientRect();
+  return {left:r.left-sr.left,right:r.right-sr.left,top:r.top-sr.top,bottom:r.bottom-sr.top,
+          cx:r.left-sr.left+r.width/2,cy:r.top-sr.top+r.height/2,w:r.width,h:r.height};
+}
+
+function horizontalGap(a,b){
+  if(a.right<=b.left)return b.left-a.right;
+  if(b.right<=a.left)return a.left-b.right;
+  return -Math.min(a.right,b.right)+Math.max(a.left,b.left);
+}
+
+function verticalOverlap(a,b){
+  return Math.max(0,Math.min(a.bottom,b.bottom)-Math.max(a.top,b.top));
+}
+
+function stopBeforeOverlap(moving, fixed, desiredGap=8){
+  const mr=barRectLocal(moving),fr=barRectLocal(fixed);
+  if(mr.cx>fr.cx){
+    moving.style.left=(fr.right+desiredGap)+'px';
+  }else{
+    moving.style.left=(fr.left-moving.offsetWidth-desiredGap)+'px';
+  }
+}
+
+function updateUnknownPhysics(){
+  const el=unknownBars[activeUnknown];
+  if(!el||el.style.display==='none')return;
+
+  const kr=barRectLocal(knownMagnet);
+  const er=barRectLocal(el);
+  const overlapY=verticalOverlap(kr,er);
+  const aligned=overlapY>Math.min(kr.h,er.h)*.45;
+  const gap=horizontalGap(kr,er);
+  const kind=el.dataset.kind;
+
+  if(!aligned || gap>150){
+    unknownFeedback.textContent=`Object ${activeUnknown}: move it closer to either pole of the known magnet.`;
+    return;
+  }
+
+  // Known magnet orientation is fixed: N on left, S on right.
+  const objectOnRight = er.cx > kr.cx;
+  const facingPole = objectOnRight ? 'S' : 'N';
+
+  if(kind==='nonmagnetic'){
+    unknownFeedback.innerHTML=`Object B shows <b>no reaction</b> to either pole of the magnet.`;
+    return;
+  }
+
+  if(kind==='magnetic'){
+    unknownFeedback.innerHTML=`Object A is <b>attracted to the ${facingPole} pole</b>. Magnetic materials are attracted to both N and S poles.`;
+
+    if(gap<115){
+      // Attraction should result in actual contact.
+      // The object under the student's finger stays where it is;
+      // the other object snaps to it so the two bars TOUCH but never overlap.
+      if(unknownDragSource==='A'){
+        stopBeforeOverlap(knownMagnet,el,0);
+      }else{
+        stopBeforeOverlap(el,knownMagnet,0);
+      }
+
+      // Keep both bars fully inside the workspace.
+      el.style.left=clamp(
+        el.offsetLeft,
+        3,
+        unknownStage.clientWidth-el.offsetWidth-3
+      )+'px';
+      knownMagnet.style.left=clamp(
+        knownMagnet.offsetLeft,
+        3,
+        unknownStage.clientWidth-knownMagnet.offsetWidth-3
+      )+'px';
+    }
+    return;
+  }
+
+  // Object C is another magnet.
+  // For this simplified investigation:
+  // - when C is on the LEFT of the known magnet, it faces the N pole and ATTRACTS
+  // - when C is on the RIGHT of the known magnet, it faces the S pole and REPELS
+  const attract = !objectOnRight;
+
+  if(attract){
+    unknownFeedback.innerHTML=`Object C is a magnet. Near the known magnet's <b>N pole</b>, the two bars <b>attract</b>.`;
+
+    if(gap<120){
+      const step=Math.min(18,Math.max(5,(120-gap)*.24));
+
+      // Move BOTH bars slightly toward each other for a clearer attraction effect.
+      el.style.left=(el.offsetLeft + step)+'px';
+      knownMagnet.style.left=(knownMagnet.offsetLeft - step*.45)+'px';
+
+      // Prevent overlap.
+      let nowGap=horizontalGap(barRectLocal(knownMagnet),barRectLocal(el));
+      if(nowGap<8) stopBeforeOverlap(el,knownMagnet,8);
+    }
+  }else{
+    unknownFeedback.innerHTML=`Object C is a magnet. Near the known magnet's <b>S pole</b>, the two bars <b>repel</b>.`;
+
+    if(gap<120){
+      const step=Math.min(20,Math.max(6,(120-gap)*.25));
+
+      // Move BOTH bars apart so the effect is obvious whether the user moved C or the known magnet.
+      el.style.left=(el.offsetLeft + step)+'px';
+      knownMagnet.style.left=(knownMagnet.offsetLeft - step*.45)+'px';
+
+      // Clamp both bars inside the stage.
+      el.style.left=clamp(el.offsetLeft,3,unknownStage.clientWidth-el.offsetWidth-3)+'px';
+      knownMagnet.style.left=clamp(knownMagnet.offsetLeft,3,unknownStage.clientWidth-knownMagnet.offsetWidth-3)+'px';
+    }
+  }
+}
+
+qsa('.unknownBtn').forEach(b=>b.onclick=()=>showUnknown(b.dataset.id));
+
+function resetUnknownStage(){
+  knownMove.set(unknownStage.clientWidth*.12,130);
+  showUnknown('A');
+}
+qs('#resetUnknown').onclick=resetUnknownStage;
+
+qsa('.mcqOption').forEach(btn=>{
+  btn.addEventListener('click',()=>{
+    qsa('.mcqOption').forEach(b=>b.classList.remove('correct','wrong'));
+    const out=qs('#mcqFeedback');
+    if(btn.dataset.answer==='C'){
+      btn.classList.add('correct');
+      out.className='answerMsg good';
+      out.innerHTML='✅ Correct. <b>C is the magnet</b> because it can repel another magnet.';
+    }else{
+      btn.classList.add('wrong');
+      out.className='answerMsg bad';
+      out.innerHTML='Not quite. Test the objects again. Remember: <b>repulsion is the key evidence that an object is a magnet.</b>';
+    }
+  });
+});
+
+/* 4 orientation */
+const orientationLab=qs('#orientationLab'),orientMagnet=qs('#orientMagnet'),orientationFeedback=qs('#orientationFeedback');
+let orientAngle=35,orientDragging=false,orientPid=null,orientOffset=0,settleRAF=null;
+function setOrient(a){orientAngle=a;orientMagnet.style.transform=`translate(-50%,-50%) rotate(${a}deg)`}
+qsa('.orientationPoleHandle').forEach(h=>h.addEventListener('pointerdown',e=>{
+ if(settleRAF){cancelAnimationFrame(settleRAF);settleRAF=null}
+ orientDragging=true;orientPid=e.pointerId;const r=orientationLab.getBoundingClientRect(),cx=r.width/2,cy=r.height*.52,px=e.clientX-r.left,py=e.clientY-r.top;
+ orientOffset=deg(Math.atan2(py-cy,px-cx))-orientAngle;try{h.setPointerCapture(e.pointerId)}catch(_){}e.preventDefault()
+}));
+orientMagnet.addEventListener('pointermove',e=>{
+ if(!orientDragging||e.pointerId!==orientPid)return;const r=orientationLab.getBoundingClientRect(),cx=r.width/2,cy=r.height*.52,px=e.clientX-r.left,py=e.clientY-r.top;
+ setOrient(deg(Math.atan2(py-cy,px-cx))-orientOffset);orientationFeedback.innerHTML='Magnet turned. <b>Press Release Magnet</b> when ready.<div class="small">It will sway before settling.</div>';e.preventDefault()
+});
+orientMagnet.addEventListener('pointerup',e=>{if(e.pointerId===orientPid){orientDragging=false;orientPid=null}});
+qs('#releaseNeedle').onclick=()=>{
+ if(settleRAF){cancelAnimationFrame(settleRAF);settleRAF=null}
+ const start=performance.now(),duration=6500,startOffset=((orientAngle%360)+360)%360;
+ // target is +90deg because left=N, right=S: N points upward and S points downward
+ let delta=90-orientAngle;while(delta>180)delta-=360;while(delta<-180)delta+=360;
+ orientationFeedback.innerHTML='The magnet is moving freely…<div class="small">Notice the sway gradually getting smaller.</div>';
+ function frame(now){
+   const t=(now-start)/1000,p=(now-start)/duration;
+   if(p>=1){setOrient(90);settleRAF=null;orientationFeedback.innerHTML='✅ The magnet settles in a <b>North–South direction</b>.<div class="small">North pole points N; South pole points S.</div>';return}
+   const damping=Math.exp(-.50*t),swing=34*damping*Math.sin(5.4*t);
+   const approach=delta*(1-Math.exp(-1.5*t));
+   setOrient(orientAngle + 0); // overwritten below safely
+   const base=orientAngle + approach;
+   orientMagnet.style.transform=`translate(-50%,-50%) rotate(${base+swing}deg)`;
+   settleRAF=requestAnimationFrame(frame)
+ }
+ const initial=orientAngle;
+ // freeze starting angle for animation
+ const saved=orientAngle;
+ function frame2(now){
+   const t=(now-start)/1000,p=(now-start)/duration;
+   if(p>=1){orientAngle=90;setOrient(90);settleRAF=null;orientationFeedback.innerHTML='✅ The magnet settles in a <b>North–South direction</b>.<div class="small">North pole points N; South pole points S.</div>';return}
+   const damping=Math.exp(-.52*t),swing=36*damping*Math.sin(5.2*t);
+   let d=90-saved;while(d>180)d-=360;while(d<-180)d+=360;
+   const base=saved+d*(1-Math.exp(-1.25*t));
+   orientAngle=base+swing;orientMagnet.style.transform=`translate(-50%,-50%) rotate(${orientAngle}deg)`;
+   settleRAF=requestAnimationFrame(frame2)
+ }
+ settleRAF=requestAnimationFrame(frame2)
+};
+function resetOrientation(){if(settleRAF){cancelAnimationFrame(settleRAF);settleRAF=null}setOrient(35);orientationFeedback.innerHTML='Drag either pole to turn the magnet.<div class="small">Then release it and observe the sway.</div>'}
+
+/* RESET */
+function resetAll(){
+ resetMaterials();
+ if(qs('#strength').classList.contains('active')){
+   resetStrength();
+   strengthInitialized=true;
+ }else{
+   strengthInitialized=false;
+ }
+ if(flippedA){flipInt(A);flippedA=false}if(flippedB){flipInt(B);flippedB=false}setInteractionStart();
+ resetUnknownStage();
+ qsa('.mcqOption').forEach(b=>b.classList.remove('correct','wrong'));
+ qs('#mcqFeedback').className='answerMsg warn';
+ qs('#mcqFeedback').textContent='Test the objects first, then choose your answer.';
+ resetOrientation();
+}
+qs('#resetAll').onclick=resetAll;
+
+requestAnimationFrame(()=>{
+  resetMaterials();
+  setInteractionStart();
+  resetUnknownStage();
+  resetOrientation();
+});
+window.addEventListener('resize',()=>requestAnimationFrame(()=>{
+  resetMaterials();
+
+  if(qs('#strength').classList.contains('active')){
+    positionStrengthMarkers();
+    resetStrength();
+    strengthInitialized=true;
+  }else{
+    strengthInitialized=false;
+  }
+
+  if(qs('#interactions').classList.contains('active')){
+    setInteractionStart();
+    resetUnknownStage();
+  }
+}));
+})();
+</script>
+</body>
+</html>
